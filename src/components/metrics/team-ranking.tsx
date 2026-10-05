@@ -53,7 +53,7 @@ export function TeamRanking({ rows }: { rows: MetricsSummaryRow[] }) {
                 className={cn(
                   "px-3 py-2 text-right",
                   row.consigned_count > 0
-                    ? "font-semibold text-primary"
+                    ? "font-semibold text-foreground"
                     : "text-muted-foreground/50",
                 )}
               >

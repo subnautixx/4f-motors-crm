@@ -61,7 +61,7 @@ function MetaLink({ href, children }: { href: string; children: React.ReactNode 
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-baseline gap-0.5 font-medium text-primary underline-offset-2 hover:underline"
+      className="inline-flex items-baseline gap-0.5 font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:decoration-foreground"
     >
       {children}
       <ExternalLink className="h-3 w-3 shrink-0 self-center" />
@@ -542,7 +542,7 @@ export function WhatsappSetupGuide({
                 aria-label={`Ir para o passo ${i + 1}`}
                 className={cn(
                   "h-1.5 rounded-full transition-all duration-200",
-                  i === index ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground",
+                  i === index ? "w-5 bg-foreground/80" : "w-1.5 bg-border hover:bg-muted-foreground",
                 )}
               />
             ))}

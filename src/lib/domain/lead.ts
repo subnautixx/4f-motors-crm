@@ -29,13 +29,17 @@ export const STATUS_LABEL: Record<LeadStatus, string> = {
 /**
  * Cores do badge de status. Um tom por etapa, sem degradê e sem excesso —
  * o objetivo é leitura rápida da lista, não decoração.
+ *
+ * Nenhuma etapa usa âmbar nem laranja: no sistema, âmbar quer dizer "precisa
+ * de você agora" (não lida, janela acabando, prazo vencido). "Interessado" em
+ * âmbar fazia metade da lista parecer urgente sem ser.
  */
 export const STATUS_CLASS: Record<LeadStatus, string> = {
   novo: "bg-zinc-500/12 text-zinc-300 ring-zinc-500/25",
   contatado: "bg-sky-500/12 text-sky-300 ring-sky-500/25",
   respondeu: "bg-cyan-500/12 text-cyan-300 ring-cyan-500/25",
-  interessado: "bg-amber-500/12 text-amber-300 ring-amber-500/25",
-  negociacao: "bg-orange-500/12 text-orange-300 ring-orange-500/25",
+  interessado: "bg-violet-500/12 text-violet-300 ring-violet-500/25",
+  negociacao: "bg-fuchsia-500/12 text-fuchsia-300 ring-fuchsia-500/25",
   consignado: "bg-emerald-500/12 text-emerald-300 ring-emerald-500/25",
   perdido: "bg-red-500/12 text-red-300 ring-red-500/25",
   sem_resposta: "bg-zinc-500/10 text-zinc-400 ring-zinc-500/20",
@@ -50,8 +54,8 @@ export const STATUS_DOT: Record<LeadStatus, string> = {
   novo: "bg-zinc-400",
   contatado: "bg-sky-400",
   respondeu: "bg-cyan-400",
-  interessado: "bg-amber-400",
-  negociacao: "bg-orange-400",
+  interessado: "bg-violet-400",
+  negociacao: "bg-fuchsia-400",
   consignado: "bg-emerald-400",
   perdido: "bg-red-400",
   sem_resposta: "bg-zinc-500",

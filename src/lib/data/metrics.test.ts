@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dayKeyInAppTz } from "@/lib/time";
-import { bucketOf, fillVolumeBuckets, resolvePeriod } from "./metrics";
+import type { MetricsSummaryRow } from "@/lib/types/database";
+import { bucketOf, fillVolumeBuckets, funnelSteps, resolvePeriod } from "./metrics";
 
 // O runtime é UTC, como a Vercel. Os recortes têm que sair no fuso de Brasília.
 
@@ -144,5 +145,55 @@ describe("fillVolumeBuckets", () => {
 
     expect(buckets).toHaveLength(24);
     expect(buckets.every((b) => b.sent === 0)).toBe(true);
+  });
+});
+
+describe("funnelSteps", () => {
+  const resumo = (parcial: Partial<MetricsSummaryRow>): MetricsSummaryRow => ({
+    user_id: "u-1",
+    full_name: "Consignador",
+    messages_sent: 0,
+    messages_received: 0,
+    contacts_approached: 0,
+    contacts_replied: 0,
+    response_rate: 0,
+    interested_count: 0,
+    negotiating_count: 0,
+    consigned_count: 0,
+    lost_count: 0,
+    first_activity_at: null,
+    last_activity_at: null,
+    ...parcial,
+  });
+
+  it("segue a ordem do funil e calcula a taxa sobre a etapa anterior", () => {
+    const etapas = funnelSteps(
+      resumo({
+        contacts_approached: 31,
+        contacts_replied: 19,
+        interested_count: 7,
+        negotiating_count: 3,
+        consigned_count: 2,
+      }),
+    );
+
+    expect(etapas.map((e) => e.key)).toEqual([
+      "approached",
+      "replied",
+      "interested",
+      "negotiating",
+      "consigned",
+    ]);
+    expect(etapas.map((e) => e.rate)).toEqual([null, 61, 37, 43, 67]);
+  });
+
+  it("não inventa taxa quando a etapa anterior é zero", () => {
+    const etapas = funnelSteps(resumo({ consigned_count: 1 }));
+    expect(etapas.every((e) => e.rate === null)).toBe(true);
+  });
+
+  it("mostra mais de 100% em vez de esconder: as etapas contam entradas do período", () => {
+    const etapas = funnelSteps(resumo({ negotiating_count: 1, consigned_count: 2 }));
+    expect(etapas[4]?.rate).toBe(200);
   });
 });

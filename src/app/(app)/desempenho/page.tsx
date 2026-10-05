@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/page-header";
+import { Funnel } from "@/components/metrics/funnel";
 import { PeriodTabs } from "@/components/metrics/period-tabs";
-import { Stat } from "@/components/metrics/stat";
 import { TeamRanking } from "@/components/metrics/team-ranking";
 import { VolumeChart } from "@/components/metrics/volume-chart";
 import { requireProfile } from "@/lib/auth/session";
@@ -11,6 +11,7 @@ import {
   fetchUserMetrics,
   fetchVolume,
   fillVolumeBuckets,
+  funnelSteps,
   resolvePeriod,
 } from "@/lib/data/metrics";
 import { formatTime } from "@/lib/format";
@@ -55,20 +56,15 @@ export default async function PerformancePage({
               {isAdmin ? "Sua atividade" : period.label}
             </h2>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              <Stat label="Mensagens enviadas" value={mine.messages_sent} />
-              <Stat label="Mensagens recebidas" value={mine.messages_received} />
-              <Stat label="Clientes abordados" value={mine.contacts_approached} />
-              <Stat
-                label="Responderam"
-                value={mine.contacts_replied}
-                hint={`${mine.response_rate}% de resposta`}
-              />
-              <Stat label="Interessados" value={mine.interested_count} />
-              <Stat label="Consignados" value={mine.consigned_count} emphasis />
-            </div>
+            <Funnel steps={funnelSteps(mine)} periodLabel={period.label} />
 
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <span>
+                Mensagens enviadas: <span className="text-foreground">{mine.messages_sent}</span>
+              </span>
+              <span>
+                Recebidas: <span className="text-foreground">{mine.messages_received}</span>
+              </span>
               <span>
                 Primeira atividade:{" "}
                 <span className="text-foreground">
@@ -80,9 +76,6 @@ export default async function PerformancePage({
                 <span className="text-foreground">
                   {mine.last_activity_at ? formatTime(mine.last_activity_at) : "—"}
                 </span>
-              </span>
-              <span>
-                Em negociação: <span className="text-foreground">{mine.negotiating_count}</span>
               </span>
             </div>
           </section>

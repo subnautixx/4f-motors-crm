@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -9,14 +8,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ALL_STATUSES, STATUS_LABEL } from "@/lib/domain/lead";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { LeadStatus } from "@/lib/types/database";
+import { useLeadStatus } from "./use-lead-status";
 
-/**
- * Troca o status do lead. A escrita vai direto pelo cliente do Supabase — a
- * RLS já garante que só o responsável (ou o admin) consegue alterar, e o
- * trigger grava o histórico.
- */
+/** Status do lead em lista suspensa — a forma compacta, para a ficha lateral da inbox. */
 export function StatusSelect({
   contactId,
   value,
@@ -28,36 +23,11 @@ export function StatusSelect({
   onChanged?: () => void;
   className?: string;
 }) {
-  const [status, setStatus] = useState<LeadStatus>(value);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(false);
-
-  async function handleChange(next: string) {
-    const nextStatus = next as LeadStatus;
-    const previous = status;
-
-    setStatus(nextStatus);
-    setSaving(true);
-    setError(false);
-
-    const { error: updateError } = await createSupabaseBrowserClient()
-      .from("contacts")
-      .update({ status: nextStatus })
-      .eq("id", contactId);
-
-    if (updateError) {
-      setStatus(previous);
-      setError(true);
-    } else {
-      onChanged?.();
-    }
-
-    setSaving(false);
-  }
+  const { status, saving, error, change } = useLeadStatus(contactId, value, onChanged);
 
   return (
     <div className={className}>
-      <Select value={status} onValueChange={handleChange} disabled={saving}>
+      <Select value={status} onValueChange={(next) => void change(next as LeadStatus)} disabled={saving}>
         <SelectTrigger aria-label="Status do cliente">
           <SelectValue />
         </SelectTrigger>

@@ -101,7 +101,7 @@ export function ContactPanel({ conversation, users, isAdmin, currentUserId, onCh
 
           <Link
             href={`/clientes/${contact.id}`}
-            className="inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
+            className="inline-flex items-center gap-1 text-xs text-foreground underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:decoration-foreground"
           >
             Ver ficha completa
             <ExternalLink className="h-3 w-3" />
@@ -154,7 +154,7 @@ export function ContactPanel({ conversation, users, isAdmin, currentUserId, onCh
                 href={(vehicle?.listing_url ?? contact.listing_url) as string}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+                className="inline-flex items-center gap-1 text-foreground underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:decoration-foreground"
               >
                 Abrir anúncio
                 <ExternalLink className="h-3 w-3" />
@@ -267,11 +267,12 @@ export function ContactPanel({ conversation, users, isAdmin, currentUserId, onCh
               </h3>
               <ul className="space-y-1.5">
                 {history.map((entry) => (
-                  <li key={entry.id} className="flex items-center gap-2 text-xs">
+                  // Quebra linha em vez de cortar: "Breno Al…" não diz quem mudou.
+                  <li key={entry.id} className="flex items-start gap-2 text-xs">
                     <Badge variant="outline" className="shrink-0 text-[10px]">
                       {STATUS_LABEL[entry.to_status]}
                     </Badge>
-                    <span className="truncate text-muted-foreground">
+                    <span className="min-w-0 break-words pt-px leading-4 text-muted-foreground">
                       {formatDateTime(entry.created_at)}
                       {entry.changed_by ? ` · ${entry.changed_by.full_name}` : ""}
                     </span>

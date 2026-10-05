@@ -89,6 +89,68 @@ export function formatDate(value: string | null | undefined): string {
   return date ? dateFormatter.format(date) : "—";
 }
 
+/**
+ * Distância em dias de calendário, no fuso da operação: 1 é amanhã, -1 é
+ * ontem. As chaves de dia viram meia-noite UTC só para subtrair — a conta é
+ * entre datas, não entre instantes.
+ */
+function calendarDaysBetween(from: Date, to: Date): number {
+  return Math.round(
+    (Date.parse(dayKeyInAppTz(to)) - Date.parse(dayKeyInAppTz(from))) / 86_400_000,
+  );
+}
+
+/**
+ * Há quanto tempo, para colunas em que a pergunta é "faz muito ou pouco":
+ * "há 3 min", "ontem", "há 4 dias". Numa lista de clientes, doze linhas de
+ * "05/10/2026" pareciam todas iguais — e o ano era só ruído.
+ *
+ * `now` é obrigatório. Um relógio implícito daria um texto no HTML do servidor
+ * e outro no navegador, e cada linha acusaria divergência de hidratação.
+ */
+export function formatRelativePast(
+  value: string | null | undefined,
+  now: Date | number,
+): string {
+  const date = toDate(value);
+  if (!date) return "—";
+
+  const reference = typeof now === "number" ? new Date(now) : now;
+  const minutes = Math.floor((reference.getTime() - date.getTime()) / 60_000);
+  const days = calendarDaysBetween(date, reference);
+
+  if (minutes < 1) return "agora";
+  if (minutes < 60) return `há ${minutes} min`;
+  if (days === 0) return `há ${Math.floor(minutes / 60)} h`;
+  if (days === 1) return "ontem";
+  if (days < 7) return `há ${days} dias`;
+  if (yearFormatter.format(date) === yearFormatter.format(reference)) {
+    return shortDateFormatter.format(date);
+  }
+  return shortDateYearFormatter.format(date);
+}
+
+/**
+ * Data de compromisso: "hoje, 15:30", "amanhã, 09:00", "08/10, 14:00". A hora
+ * fica sempre — "ligar amanhã" sem horário não serve para planejar o dia.
+ */
+export function formatAgenda(value: string | null | undefined, now: Date | number): string {
+  const date = toDate(value);
+  if (!date) return "—";
+
+  const reference = typeof now === "number" ? new Date(now) : now;
+  const days = calendarDaysBetween(reference, date);
+  const time = timeFormatter.format(date);
+
+  if (days === 0) return `hoje, ${time}`;
+  if (days === 1) return `amanhã, ${time}`;
+  if (days === -1) return `ontem, ${time}`;
+  if (yearFormatter.format(date) === yearFormatter.format(reference)) {
+    return `${shortDateFormatter.format(date)}, ${time}`;
+  }
+  return `${shortDateYearFormatter.format(date)}, ${time}`;
+}
+
 /** Separador de dia dentro da conversa. */
 export function formatDayDivider(value: string): string {
   const date = toDate(value);

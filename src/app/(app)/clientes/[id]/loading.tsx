@@ -1,24 +1,17 @@
 import { Skeleton, SkeletonPageHeader } from "@/components/ui/skeleton";
 
+/** Mesmo esqueleto da ficha: carro e etapa em cima, linha do tempo e situação embaixo. */
 export default function ClienteLoading() {
   return (
     <>
       <SkeletonPageHeader />
       <div className="min-h-0 flex-1 overflow-hidden">
-        <div className="mx-auto max-w-4xl space-y-5 p-4 sm:p-6">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
-            <div className="space-y-1.5">
-              <Skeleton className="h-4 w-44" />
-              <Skeleton className="h-3 w-32" />
-            </div>
+        <div className="mx-auto max-w-5xl space-y-4 p-4 sm:space-y-6 sm:p-6">
+          <Skeleton className="h-[370px] rounded-lg sm:h-[264px]" />
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+            <Skeleton className="h-72 rounded-lg lg:col-span-2" />
+            <Skeleton className="h-72 rounded-lg" />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-14" />
-            ))}
-          </div>
-          <Skeleton className="h-40" />
         </div>
       </div>
     </>

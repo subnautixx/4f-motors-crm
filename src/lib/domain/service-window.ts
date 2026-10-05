@@ -12,6 +12,9 @@
 /** Abaixo disto a conversa entra em alerta na lista e no cabeçalho. */
 export const WINDOW_WARNING_HOURS = 4;
 
+/** Duração da janela: cada mensagem do cliente reabre 24 horas. */
+export const SERVICE_WINDOW_MINUTES = 24 * 60;
+
 export type WindowState = "aberta" | "acabando" | "fechada" | "sem-janela";
 
 export interface ServiceWindow {
@@ -48,6 +51,16 @@ export function describeServiceWindow(
       : `Faltam ${Math.floor(minutesLeft / 60)}h para responder`;
 
   return { state: "acabando", minutesLeft, label };
+}
+
+/**
+ * Quanto da janela ainda resta, de 0 a 1 — é o que o anel em volta do avatar
+ * desenha. Cliente que acabou de escrever é 1; janela fechada ou inexistente
+ * é 0.
+ */
+export function windowFractionLeft(window: ServiceWindow): number {
+  if (window.minutesLeft === null || window.minutesLeft <= 0) return 0;
+  return Math.min(window.minutesLeft / SERVICE_WINDOW_MINUTES, 1);
 }
 
 /**

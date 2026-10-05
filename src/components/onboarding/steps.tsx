@@ -46,7 +46,7 @@ function InboxSketch() {
         <div className="h-4 w-4 rounded-full bg-border" />
         <div className="h-1.5 rounded-sm bg-border" />
         <div className="h-1 w-2/3 rounded-sm bg-border/60" />
-        <div className="mt-2 h-2 rounded-sm bg-primary/25" />
+        <div className="mt-2 h-2 rounded-sm bg-foreground/15" />
       </div>
     </div>
   );
@@ -83,8 +83,8 @@ function FunnelSketch() {
     { label: "Novo", width: "w-full", tone: "bg-zinc-500/30" },
     { label: "Contatado", width: "w-[85%]", tone: "bg-sky-400/30" },
     { label: "Respondeu", width: "w-[70%]", tone: "bg-cyan-400/30" },
-    { label: "Interessado", width: "w-[55%]", tone: "bg-amber-400/30" },
-    { label: "Negociação", width: "w-[40%]", tone: "bg-orange-400/30" },
+    { label: "Interessado", width: "w-[55%]", tone: "bg-violet-400/30" },
+    { label: "Negociação", width: "w-[40%]", tone: "bg-fuchsia-400/30" },
     { label: "Consignado", width: "w-[28%]", tone: "bg-emerald-400/40" },
   ];
 
@@ -109,7 +109,7 @@ function ComposerSketch() {
   return (
     <div className="flex h-full flex-col justify-center gap-2 px-6">
       <div className="space-y-1 rounded-md bg-surface-muted p-2">
-        <div className="h-1.5 w-1/3 rounded-sm bg-primary/40" />
+        <div className="h-1.5 w-1/3 rounded-sm bg-foreground/30" />
         <div className="h-1 w-full rounded-sm bg-border" />
         <div className="h-1 w-4/5 rounded-sm bg-border/60" />
       </div>
@@ -141,7 +141,7 @@ function TeamSketch() {
           <div className="h-2 w-10 shrink-0 rounded-sm bg-border" />
           <div className="h-3 flex-1 rounded-sm bg-surface-muted">
             <div
-              className="h-full rounded-sm bg-primary/50"
+              className="h-full rounded-sm bg-foreground/35"
               style={{ width: `${(value / max) * 100}%` }}
             />
           </div>

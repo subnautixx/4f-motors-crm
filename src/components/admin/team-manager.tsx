@@ -167,7 +167,7 @@ function AccountsField({
           <label key={account.id} className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              className="h-3.5 w-3.5 accent-[hsl(var(--primary))]"
+              className="h-3.5 w-3.5 accent-[hsl(var(--foreground))]"
               checked={selected.includes(account.id)}
               onChange={(e) =>
                 onChange(

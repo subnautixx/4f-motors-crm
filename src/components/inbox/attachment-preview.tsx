@@ -161,7 +161,7 @@ export function AttachmentPreview({
             className="h-1 w-full overflow-hidden rounded-full bg-black/30"
           >
             <div
-              className="h-full rounded-full bg-primary transition-[width] duration-150"
+              className="h-full rounded-full bg-foreground/80 transition-[width] duration-150"
               style={{ width: `${upload.percent}%` }}
             />
           </div>

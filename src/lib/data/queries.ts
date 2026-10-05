@@ -6,6 +6,7 @@ import type {
   ContactNote,
   ConversationListItem,
   StatusHistoryEntry,
+  TransferEntry,
   UserRef,
   VehicleSummary,
 } from "@/lib/types/views";
@@ -213,6 +214,57 @@ export async function fetchStatusHistory(
       changed_by: one<UserRef>(raw.changed_by),
     };
   });
+}
+
+/**
+ * Trocas de responsável das conversas de um cliente.
+ *
+ * A primeira atribuição (de ninguém para alguém) fica de fora: é o cadastro,
+ * e a ficha já mostra quando ele aconteceu. Transferir o cliente propaga para
+ * todas as conversas dele no mesmo instante — uma linha por número —, então as
+ * repetidas são colapsadas numa só.
+ */
+export async function fetchTransfers(
+  supabase: Client,
+  conversationIds: string[],
+): Promise<TransferEntry[]> {
+  if (conversationIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("conversation_assignments")
+    .select(
+      `id, created_at, reason, from_user_id, to_user_id,
+       from_user:profiles!conversation_assignments_from_user_id_fkey(id, full_name),
+       to_user:profiles!conversation_assignments_to_user_id_fkey(id, full_name),
+       changed_by_user:profiles!conversation_assignments_changed_by_fkey(id, full_name)` as "*",
+    )
+    .in("conversation_id", conversationIds)
+    .not("from_user_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  if (error) throw new Error(`Falha ao carregar transferências: ${error.message}`);
+
+  const seen = new Set<string>();
+  const entries: TransferEntry[] = [];
+
+  for (const row of data ?? []) {
+    const raw = row as unknown as RawNested;
+    const key = `${raw.from_user_id as string}|${raw.to_user_id as string}|${raw.created_at as string}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    entries.push({
+      id: raw.id as string,
+      created_at: raw.created_at as string,
+      reason: (raw.reason as string | null) ?? null,
+      from_user: one<UserRef>(raw.from_user),
+      to_user: one<UserRef>(raw.to_user),
+      changed_by: one<UserRef>(raw.changed_by_user),
+    });
+  }
+
+  return entries;
 }
 
 export async function fetchActiveUsers(supabase: Client): Promise<UserRef[]> {

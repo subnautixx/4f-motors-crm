@@ -31,7 +31,12 @@ export default async function ContactsPage() {
         }
       />
 
-      <ContactsTable contacts={contacts} users={users} isAdmin={profile.role === "admin"} />
+      <ContactsTable
+        contacts={contacts}
+        users={users}
+        isAdmin={profile.role === "admin"}
+        renderedAt={Date.now()}
+      />
     </>
   );
 }
