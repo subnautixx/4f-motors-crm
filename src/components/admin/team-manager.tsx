@@ -99,7 +99,9 @@ export function TeamManager({ profiles, accounts, permissions }: Props) {
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    <Badge variant={profile.role === "admin" ? "warning" : "outline"}>
+                    {/* Papel não é alerta: o administrador se distingue pelo
+                        preenchimento, não pelo âmbar. */}
+                    <Badge variant={profile.role === "admin" ? "default" : "outline"}>
                       {profile.role === "admin" ? "Administrador" : "Consignador"}
                     </Badge>
                   </td>
