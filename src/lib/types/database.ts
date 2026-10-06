@@ -113,6 +113,9 @@ export type ContactRow = {
   photo_path: string | null;
   opt_in_at: string | null;
   opt_in_source: string | null;
+  /** Cliente respondeu SAIR: nenhum envio sai pelo CRM enquanto preenchido. */
+  opt_out_at: string | null;
+  opt_out_source: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

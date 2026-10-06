@@ -2,7 +2,7 @@
 
 import { MessagesSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FirstSteps, type FirstStepsState } from "@/components/onboarding/first-steps";
 import { EmptyState } from "@/components/ui/misc";
 import { showMessageNotification, shouldNotify } from "@/lib/notifications";
@@ -21,6 +21,8 @@ interface Props {
   currentUserId: string;
   /** Conversa vinda de `?c=` — permite linkar direto de Clientes para o atendimento. */
   initialConversationId?: string | null;
+  /** A lista bateu no limite: há conversas mais antigas que só a busca alcança. */
+  listTruncated?: boolean;
   /** Só vem preenchido quando não há conversa nenhuma: o que falta configurar. */
   firstSteps?: FirstStepsState | null;
 }
@@ -34,9 +36,19 @@ export function InboxShell({
   isAdmin,
   currentUserId,
   initialConversationId,
+  listTruncated = false,
   firstSteps,
 }: Props) {
   const router = useRouter();
+  /**
+   * Conversas abertas a partir da busca além da lista. Ficam guardadas aqui
+   * porque não vêm do servidor: sem isto, clicar numa delas não abria nada.
+   */
+  const [extra, setExtra] = useState<ConversationListItem[]>([]);
+  const all = useMemo(
+    () => [...conversations, ...extra.filter((e) => !conversations.some((c) => c.id === e.id))],
+    [conversations, extra],
+  );
   const [selectedId, setSelectedId] = useState<string | null>(() => {
     // Só respeita o parâmetro se a conversa estiver realmente visível para
     // este usuário — a RLS já filtrou a lista, então basta procurar nela.
@@ -51,17 +63,19 @@ export function InboxShell({
   const [threadToken, setThreadToken] = useState(0);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const selected = conversations.find((c) => c.id === selectedId) ?? null;
+  const selected = all.find((c) => c.id === selectedId) ?? null;
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
 
   // O canal do realtime é assinado uma vez só. Sem estas referências, o
   // handler ficaria preso à primeira lista de conversas e ao primeiro
   // handleSelect — e notificaria com nome errado.
-  const conversationsRef = useRef(conversations);
-  conversationsRef.current = conversations;
+  const conversationsRef = useRef(all);
+  conversationsRef.current = all;
 
   const handleSelectRef = useRef<(id: string) => void>(() => {});
+  /** O `?c=` da chegada, lido só na montagem. */
+  const linkedIdRef = useRef(initialConversationId);
 
   const scheduleRefresh = useCallback(() => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
@@ -153,6 +167,9 @@ export function InboxShell({
   useEffect(() => {
     setSelectedId((current) => {
       if (current !== null) return current;
+      // Veio de um link para uma conversa que este usuário não enxerga: abrir
+      // a primeira da lista mostraria outro cliente como se fosse o pedido.
+      if (linkedIdRef.current) return null;
       if (!window.matchMedia("(min-width: 768px)").matches) return null;
       return conversationsRef.current[0]?.id ?? null;
     });
@@ -162,12 +179,15 @@ export function InboxShell({
 
   // A conversa aberta pode sumir da lista (transferida para outro consignador).
   useEffect(() => {
-    if (selectedId && !conversations.some((c) => c.id === selectedId)) {
-      setSelectedId(conversations[0]?.id ?? null);
+    if (selectedId && !all.some((c) => c.id === selectedId)) {
+      setSelectedId(all[0]?.id ?? null);
     }
-  }, [conversations, selectedId]);
+  }, [all, selectedId]);
 
-  function handleSelect(id: string) {
+  function handleSelect(id: string, item?: ConversationListItem) {
+    if (item && !conversations.some((c) => c.id === id)) {
+      setExtra((prev) => (prev.some((c) => c.id === id) ? prev : [...prev, item]));
+    }
     setSelectedId(id);
     setShowDetails(false);
 
@@ -193,6 +213,7 @@ export function InboxShell({
 
         <ConversationList
           conversations={conversations}
+          listTruncated={listTruncated}
           selectedId={selectedId}
           onSelect={handleSelect}
           users={users}

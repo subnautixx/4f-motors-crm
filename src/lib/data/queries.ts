@@ -28,7 +28,7 @@ const VEHICLE_FIELDS =
   "id, brand, model, version, year, model_year, km, listed_price, listing_url, source_platform, is_primary";
 
 const CONTACT_FIELDS =
-  "id, full_name, phone_e164, status, source_platform, listing_url, notes, next_action_at, next_action_note, last_interaction_at, photo_path, opt_in_at, opt_in_source, owner_user_id, created_at";
+  "id, full_name, phone_e164, status, source_platform, listing_url, notes, next_action_at, next_action_note, last_interaction_at, photo_path, opt_in_at, opt_in_source, opt_out_at, owner_user_id, created_at";
 
 interface RawNested {
   [key: string]: unknown;
@@ -54,12 +54,22 @@ export interface ConversationFilters {
   unreadOnly?: boolean;
   assigneeId?: string | "todos";
   accountId?: string | "todos";
+  /** Só estas conversas — para abrir por link uma que ficou fora da lista. */
+  ids?: string[];
+  /** Só as conversas destes clientes — para a busca além da lista. */
+  contactIds?: string[];
 }
+
+/**
+ * Quantas conversas a inbox carrega de uma vez. A lista e o filtro vivem no
+ * navegador; passou disso, a busca vai ao banco (`searchConversationsBeyondList`).
+ */
+export const CONVERSATION_LIST_LIMIT = 200;
 
 export async function fetchConversations(
   supabase: Client,
   filters: ConversationFilters = {},
-  limit = 200,
+  limit = CONVERSATION_LIST_LIMIT,
 ): Promise<ConversationListItem[]> {
   let query = supabase
     .from("conversations")
@@ -86,6 +96,8 @@ export async function fetchConversations(
   if (filters.accountId && filters.accountId !== "todos") {
     query = query.eq("whatsapp_account_id", filters.accountId);
   }
+  if (filters.ids) query = query.in("id", filters.ids);
+  if (filters.contactIds) query = query.in("contact_id", filters.contactIds);
 
   const search = filters.search?.trim();
   if (search) {
@@ -116,6 +128,42 @@ export async function fetchConversations(
       account: one<AccountRef>(raw.account),
     } satisfies ConversationListItem;
   });
+}
+
+/**
+ * Busca por nome ou telefone nas conversas que não couberam na lista.
+ *
+ * A inbox carrega as 200 mais recentes e filtra no navegador; o cliente que
+ * falou pela última vez há meses simplesmente não aparecia na busca. Primeiro
+ * acha os clientes, depois as conversas deles — duas consultas simples, que a
+ * RLS recorta do mesmo jeito que o resto.
+ */
+export async function searchConversationsBeyondList(
+  supabase: Client,
+  term: string,
+  limit = 20,
+): Promise<ConversationListItem[]> {
+  // Vírgula, parênteses e aspas têm significado no filtro `or` do PostgREST;
+  // curinga digitado também não pode virar curinga de verdade.
+  const clean = term.replace(/[(),"\\%_*]/g, " ").replace(/\s+/g, " ").trim();
+  const digits = clean.replace(/\D/g, "");
+  if (clean.length < 3) return [];
+
+  const conditions = [`full_name.ilike."%${clean}%"`];
+  if (digits.length >= 4) conditions.push(`phone_e164.ilike."%${digits}%"`);
+
+  const { data, error } = await supabase
+    .from("contacts")
+    .select("id")
+    .or(conditions.join(","))
+    .limit(limit);
+
+  if (error) throw new Error(`Falha ao buscar clientes: ${error.message}`);
+
+  const contactIds = (data ?? []).map((row) => row.id);
+  if (contactIds.length === 0) return [];
+
+  return fetchConversations(supabase, { contactIds }, limit);
 }
 
 export interface ContactFilters {

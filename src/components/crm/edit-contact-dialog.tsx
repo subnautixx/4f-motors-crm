@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/toast";
 import { SOURCE_PLATFORMS } from "@/lib/domain/lead";
 import { normalizePhone } from "@/lib/phone";
 import { uploadContactPhoto } from "@/lib/contacts/upload-photo";
+import { formatPriceInput, PRICE_INPUT_ERROR, parseBRL } from "@/lib/money";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { ContactRow, VehicleRow } from "@/lib/types/database";
 import { isoToLocalInput, localInputToIso } from "@/lib/time";
@@ -109,6 +110,12 @@ export function EditContactDialog({ contactId, compact = false, onSaved }: Props
       return;
     }
 
+    const price = parseBRL(String(form.get("price") ?? ""));
+    if (Number.isNaN(price)) {
+      setError(PRICE_INPUT_ERROR);
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -152,7 +159,7 @@ export function EditContactDialog({ contactId, compact = false, onSaved }: Props
       year: numberOrNull(form.get("year")),
       model_year: numberOrNull(form.get("modelYear")),
       km: numberOrNull(form.get("km")),
-      listed_price: numberOrNull(form.get("price")),
+      listed_price: price,
       listing_url: listingUrl,
       source_platform: platform || null,
     };
@@ -309,8 +316,9 @@ export function EditContactDialog({ contactId, compact = false, onSaved }: Props
                   <Input
                     id="edit-price"
                     name="price"
-                    inputMode="numeric"
-                    defaultValue={vehicle?.listed_price ?? ""}
+                    inputMode="decimal"
+                    placeholder="89.900"
+                    defaultValue={formatPriceInput(vehicle?.listed_price)}
                   />
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,9 @@ interface Props {
 export function TeamManager({ profiles, accounts, permissions }: Props) {
   const router = useRouter();
   const toast = useToast();
+  // Desativar corta o acesso na hora, então pede confirmação; reativar não.
+  const [confirmDeactivate, setConfirmDeactivate] = useState<ProfileRow | null>(null);
+  const [togglePending, setTogglePending] = useState(false);
 
   const accountsOf = (userId: string) =>
     permissions
@@ -49,11 +53,17 @@ export function TeamManager({ profiles, accounts, permissions }: Props) {
       .filter((a): a is AccountRef => Boolean(a));
 
   async function toggleActive(profile: ProfileRow) {
+    if (togglePending) return;
+    setTogglePending(true);
+
     const response = await fetch(`/api/admin/users/${profile.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !profile.is_active }),
     });
+
+    setTogglePending(false);
+    setConfirmDeactivate(null);
 
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -126,7 +136,12 @@ export function TeamManager({ profiles, accounts, permissions }: Props) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => void toggleActive(profile)}
+                        disabled={togglePending}
+                        onClick={() =>
+                          profile.is_active
+                            ? setConfirmDeactivate(profile)
+                            : void toggleActive(profile)
+                        }
                       >
                         {profile.is_active ? "Desativar" : "Reativar"}
                       </Button>
@@ -143,6 +158,25 @@ export function TeamManager({ profiles, accounts, permissions }: Props) {
         Desativar um usuário corta o acesso no banco de dados, não apenas na interface: as
         políticas de segurança deixam de reconhecê-lo imediatamente.
       </p>
+
+      <ConfirmDialog
+        open={confirmDeactivate !== null}
+        onOpenChange={(next) => (next ? null : setConfirmDeactivate(null))}
+        title={`Desativar ${confirmDeactivate?.full_name ?? "usuário"}?`}
+        description={
+          <>
+            <p>Perde o acesso ao CRM na hora, inclusive se estiver com a tela aberta agora.</p>
+            <p>
+              Os clientes e as conversas continuam no nome dele até você transferir — pela ficha de
+              cada cliente. Dá para reativar depois sem perder nada.
+            </p>
+          </>
+        }
+        confirmLabel="Desativar"
+        pendingLabel="Desativando…"
+        pending={togglePending}
+        onConfirm={() => (confirmDeactivate ? void toggleActive(confirmDeactivate) : null)}
+      />
     </div>
   );
 }
@@ -229,6 +263,14 @@ function EditUserDialog({
     if (pending) return;
 
     const form = new FormData(event.currentTarget);
+    // Vazio mantém a senha atual; preenchido, o admin define uma nova.
+    const password = String(form.get("password") ?? "");
+
+    if (password && password.length < 10) {
+      setError("A nova senha precisa de pelo menos 10 caracteres.");
+      return;
+    }
+
     setPending(true);
     setError(null);
 
@@ -241,6 +283,7 @@ function EditUserDialog({
         phone: String(form.get("phone") ?? "").trim(),
         role,
         whatsappAccountIds: selectedAccounts,
+        ...(password ? { password } : {}),
       }),
     });
 
@@ -331,6 +374,23 @@ function EditUserDialog({
             onChange={setSelectedAccounts}
           />
 
+          <div className="space-y-1.5">
+            <Label htmlFor={`senha-${profile.id}`}>Nova senha</Label>
+            <Input
+              id={`senha-${profile.id}`}
+              name="password"
+              type="password"
+              minLength={10}
+              maxLength={72}
+              autoComplete="new-password"
+              aria-describedby={`senha-ajuda-${profile.id}`}
+            />
+            <p id={`senha-ajuda-${profile.id}`} className="text-xs text-muted-foreground">
+              Deixe em branco para manter a atual. Preenchida, vale a partir do próximo login —
+              passe para a pessoa por um canal seguro.
+            </p>
+          </div>
+
           {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -411,7 +471,7 @@ function NewUserDialog({
         <DialogHeader>
           <DialogTitle>Novo usuário</DialogTitle>
           <DialogDescription>
-            A senha inicial é definida aqui e pode ser trocada pelo usuário depois.
+            A senha inicial é definida aqui. Se a pessoa esquecer, redefina em Editar.
           </DialogDescription>
         </DialogHeader>
 

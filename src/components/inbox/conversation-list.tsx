@@ -1,7 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ContactAvatar } from "@/components/crm/contact-avatar";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,9 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { searchConversationsBeyondList } from "@/lib/data/queries";
 import { ALL_STATUSES, STATUS_DOT, STATUS_LABEL } from "@/lib/domain/lead";
 import { describeServiceWindow } from "@/lib/domain/service-window";
 import { formatListTime } from "@/lib/format";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { LeadStatus } from "@/lib/types/database";
 import type { ConversationListItem, UserRef } from "@/lib/types/views";
 import { useNow } from "@/lib/use-now";
@@ -27,15 +29,33 @@ import { WindowRing } from "./window-ring";
 const FILTER_ON = "bg-foreground/[0.08] font-medium text-foreground ring-foreground/25";
 const FILTER_OFF = "bg-transparent text-muted-foreground ring-border";
 
+/** Minúsculas e sem acento: "joao" acha "João", "acai" acha "Açaí". */
+function fold(value: string): string {
+  return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+}
+
+/** Abaixo disto a busca no banco devolveria meia lista de clientes. */
+const MIN_REMOTE_TERM = 3;
+
 interface Props {
   conversations: ConversationListItem[];
+  /** A lista bateu no limite: a busca também procura no banco. */
+  listTruncated?: boolean;
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  /** O item vai junto quando a conversa veio da busca e não está na lista. */
+  onSelect: (id: string, item?: ConversationListItem) => void;
   users: UserRef[];
   isAdmin: boolean;
 }
 
-export function ConversationList({ conversations, selectedId, onSelect, users, isAdmin }: Props) {
+export function ConversationList({
+  conversations,
+  listTruncated = false,
+  selectedId,
+  onSelect,
+  users,
+  isAdmin,
+}: Props) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<LeadStatus | "todos">("todos");
   const [assignee, setAssignee] = useState<string>("todos");
@@ -43,17 +63,24 @@ export function ConversationList({ conversations, selectedId, onSelect, users, i
   // Um relógio para a lista inteira: as janelas de todas as linhas andam juntas.
   const now = useNow();
 
-  // Filtro no cliente: a RLS já entregou só o que este usuário pode ver, e a
-  // lista cabe em memória. Resultado instantâneo, sem ida ao servidor.
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const digits = term.replace(/\D/g, "");
-
-    return conversations.filter((c) => {
+  const passesFilters = useCallback(
+    (c: ConversationListItem) => {
       if (unreadOnly && c.unread_count === 0) return false;
       if (status !== "todos" && c.contact.status !== status) return false;
       if (assignee !== "todos" && c.assigned_user_id !== assignee) return false;
+      return true;
+    },
+    [unreadOnly, status, assignee],
+  );
 
+  // Filtro no cliente: a RLS já entregou só o que este usuário pode ver, e a
+  // lista cabe em memória. Resultado instantâneo, sem ida ao servidor.
+  const filtered = useMemo(() => {
+    const term = fold(search.trim());
+    const digits = term.replace(/\D/g, "");
+
+    return conversations.filter((c) => {
+      if (!passesFilters(c)) return false;
       if (!term) return true;
 
       const vehicle = [c.vehicle?.brand, c.vehicle?.model, c.vehicle?.version]
@@ -61,13 +88,54 @@ export function ConversationList({ conversations, selectedId, onSelect, users, i
         .join(" ");
 
       return (
-        c.contact.full_name.toLowerCase().includes(term) ||
+        fold(c.contact.full_name).includes(term) ||
         (digits.length > 0 && c.contact.phone_e164.includes(digits)) ||
-        vehicle.toLowerCase().includes(term) ||
-        (c.last_message_preview ?? "").toLowerCase().includes(term)
+        fold(vehicle).includes(term) ||
+        fold(c.last_message_preview ?? "").includes(term)
       );
     });
-  }, [conversations, search, status, assignee, unreadOnly]);
+  }, [conversations, search, passesFilters]);
+
+  /**
+   * A lista para nas 200 mais recentes. Passou disso, a busca também pergunta
+   * ao banco — senão o cliente que falou há meses "não existia" na inbox.
+   */
+  const [older, setOlder] = useState<ConversationListItem[]>([]);
+  const [olderState, setOlderState] = useState<"idle" | "loading" | "error">("idle");
+  const remoteTerm = listTruncated && search.trim().length >= MIN_REMOTE_TERM ? search.trim() : "";
+
+  useEffect(() => {
+    if (!remoteTerm) {
+      setOlder([]);
+      setOlderState("idle");
+      return;
+    }
+
+    let cancelled = false;
+    setOlderState("loading");
+    // Espera a pessoa parar de digitar: uma ida ao banco por busca, não por tecla.
+    const timer = setTimeout(() => {
+      searchConversationsBeyondList(createSupabaseBrowserClient(), remoteTerm)
+        .then((found) => {
+          if (cancelled) return;
+          setOlder(found);
+          setOlderState("idle");
+        })
+        .catch(() => {
+          if (!cancelled) setOlderState("error");
+        });
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [remoteTerm]);
+
+  const olderVisible = useMemo(
+    () => older.filter((c) => !conversations.some((l) => l.id === c.id) && passesFilters(c)),
+    [older, conversations, passesFilters],
+  );
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unread_count, 0);
   const hasFilters = status !== "todos" || assignee !== "todos" || unreadOnly;
@@ -163,25 +231,61 @@ export function ConversationList({ conversations, selectedId, onSelect, users, i
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && olderVisible.length === 0 && olderState !== "loading" ? (
           <p className="px-6 py-12 text-center text-sm text-muted-foreground">
             {conversations.length === 0
               ? "Nenhuma conversa ainda."
-              : "Nenhuma conversa com esses filtros."}
+              : olderState === "error"
+                ? "Não foi possível procurar nas conversas mais antigas. Tente de novo."
+                : search.trim() && !hasFilters
+                  ? `Nenhuma conversa com “${search.trim()}”.`
+                  : "Nenhuma conversa com esses filtros."}
           </p>
         ) : (
-          <ul className="py-1">
-            {filtered.map((c) => (
-              <ConversationRow
-                key={c.id}
-                conversation={c}
-                selected={c.id === selectedId}
-                showAssignee={isAdmin}
-                onSelect={onSelect}
-                now={now}
-              />
-            ))}
-          </ul>
+          <>
+            {filtered.length > 0 ? (
+              <ul className="py-1">
+                {filtered.map((c) => (
+                  <ConversationRow
+                    key={c.id}
+                    conversation={c}
+                    selected={c.id === selectedId}
+                    showAssignee={isAdmin}
+                    onSelect={onSelect}
+                    now={now}
+                  />
+                ))}
+              </ul>
+            ) : null}
+
+            {remoteTerm && (olderState !== "idle" || olderVisible.length > 0) ? (
+              <p
+                role="status"
+                className="px-4 pb-1 pt-3 text-[11px] font-medium text-muted-foreground"
+              >
+                {olderState === "loading"
+                  ? "Procurando nas conversas mais antigas…"
+                  : olderState === "error"
+                    ? "Não foi possível procurar nas conversas mais antigas."
+                    : "Conversas mais antigas"}
+              </p>
+            ) : null}
+
+            {olderVisible.length > 0 ? (
+              <ul className="pb-1">
+                {olderVisible.map((c) => (
+                  <ConversationRow
+                    key={c.id}
+                    conversation={c}
+                    selected={c.id === selectedId}
+                    showAssignee={isAdmin}
+                    onSelect={(id) => onSelect(id, c)}
+                    now={now}
+                  />
+                ))}
+              </ul>
+            ) : null}
+          </>
         )}
       </div>
     </div>
@@ -250,7 +354,9 @@ function ConversationRow({
 
         {/* Margem negativa: o anel ocupa o respiro da linha, não empurra o texto. */}
         <WindowRing
-          expiresAt={c.service_window_expires_at}
+          // Quem pediu SAIR não recebe nada: anel âmbar ali chamaria para uma
+          // resposta que o sistema vai recusar.
+          expiresAt={c.contact.opt_out_at ? null : c.service_window_expires_at}
           now={now}
           size={36}
           className="-mx-1 -mb-1 -mt-0.5"
@@ -306,7 +412,14 @@ function ConversationRow({
             />
             <span className="shrink-0">{STATUS_LABEL[c.contact.status]}</span>
 
-            {janela?.state === "acabando" ? (
+            {c.contact.opt_out_at ? (
+              <span
+                className="shrink-0 rounded-full bg-surface-muted px-1.5 text-[10px] font-medium text-muted-foreground ring-1 ring-inset ring-border"
+                title="O cliente respondeu SAIR — o envio está bloqueado"
+              >
+                pediu SAIR
+              </span>
+            ) : janela?.state === "acabando" ? (
               <span
                 className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-[10px] font-medium text-amber-300 ring-1 ring-inset ring-amber-500/25"
                 title="A janela de 24 horas está acabando"

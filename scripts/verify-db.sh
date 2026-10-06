@@ -178,6 +178,78 @@ begin
     raise notice 'ok  opt-in: gravado na primeira resposta do cliente';
   end if;
 
+  -- SAIR: a política publicada promete parar de enviar. Um cliente sem
+  -- consentimento ainda responde SAIR, outro já conversando também.
+  declare
+    v_conv record;
+    v_bloqueou boolean;
+  begin
+    select c.id as conv, c.contact_id as contato, c.whatsapp_account_id as conta,
+           c.assigned_user_id as dono
+      into v_conv
+      from public.conversations c
+      join public.contacts ct on ct.id = c.contact_id
+     where ct.opt_in_at is null
+     limit 1;
+
+    insert into public.messages (conversation_id, whatsapp_account_id, contact_id, direction,
+                                 content, status, wa_timestamp)
+    values (v_conv.conv, v_conv.conta, v_conv.contato, 'inbound', ' Sair. ', 'delivered', now());
+
+    if not exists (
+      select 1 from public.contacts
+       where id = v_conv.contato and opt_out_at is not null and opt_in_at is null
+    ) then
+      raise notice 'FALHA: SAIR não foi registrado, ou virou consentimento';
+      v_falhas := v_falhas + 1;
+    else
+      raise notice 'ok  SAIR: registrado como pedido de saída, não como consentimento';
+    end if;
+
+    -- Mensagem de saída para quem saiu não é gravada, por nenhum caminho.
+    begin
+      insert into public.messages (conversation_id, whatsapp_account_id, contact_id, direction,
+                                   content, sent_by_user_id)
+      values (v_conv.conv, v_conv.conta, v_conv.contato, 'outbound', 'Oi!', v_conv.dono);
+      v_bloqueou := false;
+    exception when others then
+      v_bloqueou := sqlerrm like '%pediu para não receber%';
+    end;
+
+    if not v_bloqueou then
+      raise notice 'FALHA: mensagem de saída gravada para cliente que pediu SAIR';
+      v_falhas := v_falhas + 1;
+    else
+      raise notice 'ok  SAIR: envio bloqueado no banco';
+    end if;
+
+    -- Mensagem antiga chegando atrasada não desfaz o pedido.
+    insert into public.messages (conversation_id, whatsapp_account_id, contact_id, direction,
+                                 content, status, wa_timestamp)
+    values (v_conv.conv, v_conv.conta, v_conv.contato, 'inbound', 'Tenho interesse',
+            'delivered', now() - interval '1 day');
+
+    if not exists (select 1 from public.contacts where id = v_conv.contato and opt_out_at is not null) then
+      raise notice 'FALHA: mensagem antiga, entregue fora de ordem, desfez o SAIR';
+      v_falhas := v_falhas + 1;
+    else
+      raise notice 'ok  SAIR: mensagem fora de ordem não desfaz o pedido';
+    end if;
+
+    -- Escrever de novo depois do SAIR libera a conversa.
+    insert into public.messages (conversation_id, whatsapp_account_id, contact_id, direction,
+                                 content, status, wa_timestamp)
+    values (v_conv.conv, v_conv.conta, v_conv.contato, 'inbound', 'Mudei de ideia, quero vender',
+            'delivered', now() + interval '1 minute');
+
+    if exists (select 1 from public.contacts where id = v_conv.contato and opt_out_at is not null) then
+      raise notice 'FALHA: cliente escreveu de novo e continuou bloqueado';
+      v_falhas := v_falhas + 1;
+    else
+      raise notice 'ok  SAIR: cliente que volta a escrever libera a conversa';
+    end if;
+  end;
+
   -- O admin enxerga a operação inteira.
   perform set_config('request.jwt.claim.sub', v_admin::text, false);
   set local role authenticated;
