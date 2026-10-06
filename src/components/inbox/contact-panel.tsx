@@ -186,7 +186,12 @@ export function ContactPanel({ conversation, users, isAdmin, currentUserId, onCh
           {/* Consentimento: a Meta exige para template de Marketing, e a
               resposta do próprio cliente é a evidência mais confiável. */}
           <Field label="Consentimento">
-            {contact.opt_in_at ? (
+            {contact.opt_out_at ? (
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
+                Pediu para sair · {formatDate(contact.opt_out_at)}
+              </span>
+            ) : contact.opt_in_at ? (
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
                 <span>

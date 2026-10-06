@@ -1,10 +1,11 @@
 "use client";
 
-import { AlertTriangle, Loader2, Paperclip, SendHorizonal } from "lucide-react";
+import { AlertTriangle, BellOff, Loader2, Paperclip, SendHorizonal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { describeServiceWindow, requiresApprovedTemplate } from "@/lib/domain/service-window";
+import { formatDate } from "@/lib/format";
 import { clearDraftIf, readDraft, writeDraft } from "@/lib/inbox/drafts";
 import { compressIfNeeded } from "@/lib/media/compress";
 import { attemptKey, readAttempt, saveAttempt, clearAttempt, readSendResponse, type SendResponse } from "@/lib/messages/send-response";
@@ -503,6 +504,26 @@ export function Composer({
       event.preventDefault();
       void send();
     }
+  }
+
+  // O cliente respondeu SAIR. A rota e o banco recusam o envio; aqui o campo
+  // nem aparece, para ninguém escrever uma resposta que não vai sair.
+  if (conversation.contact.opt_out_at) {
+    return (
+      <div className="shrink-0 border-t border-border bg-surface px-3 py-3">
+        <div
+          role="status"
+          className="flex items-start gap-2.5 rounded-lg bg-surface-muted px-3 py-2.5 text-xs leading-relaxed text-foreground/85 ring-1 ring-inset ring-border"
+        >
+          <BellOff aria-hidden className="mt-px h-4 w-4 shrink-0 text-muted-foreground" />
+          <p>
+            Este cliente pediu para não receber mensagens — respondeu SAIR em{" "}
+            {formatDate(conversation.contact.opt_out_at)}. O envio fica bloqueado; se ele escrever
+            de novo, a conversa volta a ficar livre.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (precisaModelo) {

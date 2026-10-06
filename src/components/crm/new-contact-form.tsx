@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/toast";
 import { SOURCE_PLATFORMS } from "@/lib/domain/lead";
 import { normalizePhone } from "@/lib/phone";
 import { uploadContactPhoto } from "@/lib/contacts/upload-photo";
+import { PRICE_INPUT_ERROR, parseBRL } from "@/lib/money";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AccountRef } from "@/lib/types/views";
 
@@ -56,6 +57,14 @@ export function NewContactForm({
 
     if (!phone) {
       setError("Telefone inválido. Informe DDD + número.");
+      return;
+    }
+
+    // Lido antes de gravar qualquer coisa: o cliente nasce antes do veículo, e
+    // um preço ilegível descoberto depois deixaria o cadastro pela metade.
+    const price = parseBRL(String(form.get("price") ?? ""));
+    if (Number.isNaN(price)) {
+      setError(PRICE_INPUT_ERROR);
       return;
     }
 
@@ -109,7 +118,7 @@ export function NewContactForm({
       year: numberOrNull(form.get("year")),
       model_year: numberOrNull(form.get("modelYear")),
       km: numberOrNull(form.get("km")),
-      listed_price: numberOrNull(form.get("price")),
+      listed_price: price,
       listing_url: listingUrl,
       source_platform: platform,
       is_primary: true,
@@ -223,7 +232,7 @@ export function NewContactForm({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="price">Preço anunciado</Label>
-            <Input id="price" name="price" inputMode="numeric" placeholder="89900" />
+            <Input id="price" name="price" inputMode="decimal" placeholder="89.900" />
           </div>
         </div>
       </section>

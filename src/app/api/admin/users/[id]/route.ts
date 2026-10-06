@@ -16,6 +16,8 @@ const patchSchema = z.object({
   role: z.enum(["admin", "consignador"]).optional(),
   isActive: z.boolean().optional(),
   whatsappAccountIds: z.array(z.string().uuid()).optional(),
+  // Senha nova definida pelo admin. Mesma regra do cadastro.
+  password: z.string().min(10).max(72).optional(),
 });
 
 /** Atualiza usuário: dados do perfil, papel, ativação e WhatsApps liberados. */
@@ -33,7 +35,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const { fullName, email, phone, role, isActive, whatsappAccountIds } = parsed.data;
+  const { fullName, email, phone, role, isActive, whatsappAccountIds, password } = parsed.data;
   const admin = createSupabaseAdminClient();
 
   // Um admin não pode se rebaixar nem se desativar: sobrando zero admins,
@@ -91,6 +93,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     updates.email = email;
   }
 
+  // Quem esquece a senha não tinha saída: o login manda falar com o admin, e
+  // o admin não tinha como redefinir. A senha vai só para o Auth — nunca para
+  // o perfil nem para o registro de auditoria.
+  if (password !== undefined) {
+    const { error } = await admin.auth.admin.updateUserById(id, { password });
+    if (error) {
+      return NextResponse.json(
+        { error: "password_update_failed", message: `Não foi possível trocar a senha: ${error.message}` },
+        { status: 422 },
+      );
+    }
+  }
+
   if (Object.keys(updates).length > 0) {
     const { error } = await admin.from("profiles").update(updates).eq("id", id);
     if (error) {
@@ -128,7 +143,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     action: "user.update",
     entityType: "profile",
     entityId: id,
-    metadata: { ...updates, whatsapp_accounts: whatsappAccountIds?.length },
+    metadata: {
+      ...updates,
+      whatsapp_accounts: whatsappAccountIds?.length,
+      ...(password !== undefined ? { password_reset: true } : {}),
+    },
     ip: clientIp(request.headers),
   });
 

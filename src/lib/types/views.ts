@@ -49,6 +49,7 @@ export type ContactSummary = Pick<
   | "photo_path"
   | "opt_in_at"
   | "opt_in_source"
+  | "opt_out_at"
   | "owner_user_id"
   | "created_at"
 >;

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import type { ApiActor } from "@/lib/auth/api";
 import type { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requiresTemplateForWindow } from "@/lib/domain/service-window";
+import { formatDate } from "@/lib/format";
 import type { LeadStatus } from "@/lib/types/database";
 import { getAccountWithSecrets, userCanSendFromAccount } from "./accounts";
 import type { AccountWithSecrets } from "./accounts";
@@ -38,7 +39,7 @@ export async function authorizeConversationSend(
   const { data: conversation } = await supabase
     .from("conversations")
     .select(
-      "id, contact_id, whatsapp_account_id, assigned_user_id, service_window_expires_at, contacts(phone_e164, status)",
+      "id, contact_id, whatsapp_account_id, assigned_user_id, service_window_expires_at, contacts(phone_e164, status, opt_out_at)",
     )
     .eq("id", conversationId)
     .maybeSingle();
@@ -71,13 +72,29 @@ export async function authorizeConversationSend(
   }
 
   const contact = conversation.contacts as unknown as
-    | { phone_e164: string; status: LeadStatus }
+    | { phone_e164: string; status: LeadStatus; opt_out_at: string | null }
     | null;
 
   if (!contact?.phone_e164) {
     return {
       ok: false,
       response: NextResponse.json({ error: "contact_without_phone" }, { status: 422 }),
+    };
+  }
+
+  // O cliente respondeu SAIR, e a política publicada promete parar de enviar.
+  // Vale para tudo — inclusive modelo aprovado fora da janela. O banco tem a
+  // mesma trava; aqui a recusa vem com uma explicação.
+  if (contact.opt_out_at) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          error: "contact_opted_out",
+          message: `O cliente pediu para não receber mensagens (respondeu SAIR em ${formatDate(contact.opt_out_at)}). Se ele escrever de novo, o envio volta a ser liberado.`,
+        },
+        { status: 422 },
+      ),
     };
   }
 

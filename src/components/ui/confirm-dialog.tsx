@@ -26,6 +26,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Confirmar",
+  pendingLabel = "Removendo…",
   pending = false,
   onConfirm,
 }: {
@@ -34,6 +35,8 @@ export function ConfirmDialog({
   title: string;
   description: React.ReactNode;
   confirmLabel?: string;
+  /** Texto do botão enquanto a ação corre. */
+  pendingLabel?: string;
   pending?: boolean;
   onConfirm: () => void;
 }) {
@@ -57,7 +60,7 @@ export function ConfirmDialog({
             Cancelar
           </Button>
           <Button type="button" variant="destructive" onClick={onConfirm} disabled={pending}>
-            {pending ? "Removendo…" : confirmLabel}
+            {pending ? pendingLabel : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

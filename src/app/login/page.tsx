@@ -36,9 +36,9 @@ const HIGHLIGHTS = [
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; motivo?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, motivo } = await searchParams;
 
   return (
     <main className="min-h-dvh lg:grid lg:grid-cols-[1.1fr_1fr]">
@@ -103,11 +103,20 @@ export default async function LoginPage({
             </div>
           </div>
 
+          {motivo === "desativado" ? (
+            <p
+              role="alert"
+              className="mb-5 rounded-lg bg-surface px-3 py-2.5 text-sm leading-relaxed text-foreground ring-1 ring-inset ring-border"
+            >
+              Seu acesso foi desativado. Se for engano, fale com o administrador da 4FMOTORS.
+            </p>
+          ) : null}
+
           <LoginForm nextPath={next} />
 
           <p className="mt-8 border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground">
-            Perdeu o acesso ou esqueceu a senha? Fale com o administrador da 4FMOTORS — só ele
-            cria e reativa usuários.
+            Perdeu o acesso ou esqueceu a senha? Fale com o administrador da 4FMOTORS — ele
+            redefine a senha e reativa usuários.
           </p>
         </div>
       </div>

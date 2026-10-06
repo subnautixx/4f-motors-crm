@@ -455,7 +455,7 @@ export function MessageThread({
         </Button>
 
         <WindowRing
-          expiresAt={conversation.service_window_expires_at}
+          expiresAt={conversation.contact.opt_out_at ? null : conversation.service_window_expires_at}
           now={now}
           size={32}
           className="-m-1"
