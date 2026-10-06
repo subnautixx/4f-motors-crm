@@ -22,6 +22,8 @@
     --popover: 240 6% 11%;
     --popover-foreground: 0 0% 96%;
 
+    /* Âmbar = "precisa de você agora" (não lida, janela acabando, prazo
+       vencido, ação principal). Seleção, filtro, link e gráfico são neutros. */
     --primary: 38 92% 55%;
     --primary-foreground: 30 20% 10%;
 

@@ -43,6 +43,9 @@ pipelines.
 ## Design
 
 Tema escuro, um único acento âmbar, densidade de informação organizada.
+Âmbar quer dizer "precisa de você agora": não lida, janela de 24h acabando,
+prazo vencido e a ação principal da tela. Seleção, filtro ligado, link, status
+e gráfico ficam neutros — senão o âmbar deixa de chamar atenção para algo.
 Evitar excesso de gradiente, animação, sombra, card e elemento decorativo.
 Movimento só onde confirma que algo chegou, entrou ou mudou.
 

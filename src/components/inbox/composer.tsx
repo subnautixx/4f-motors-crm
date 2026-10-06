@@ -581,7 +581,7 @@ export function Composer({
               {files.length > 1 ? " · vão como mensagens separadas" : ""}
             </span>
             {progress ? (
-              <span className="tabular-nums text-primary">
+              <span className="tabular-nums text-foreground">
                 enviando {progress.done + 1} de {progress.total}
               </span>
             ) : (

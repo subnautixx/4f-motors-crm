@@ -8,6 +8,10 @@ import { cn } from "@/lib/utils";
  * isto responde é "em que horário a equipe trabalha e onde estão os buracos",
  * e para isso a altura relativa basta. Eixo, grade e tooltip só adicionariam
  * ruído numa ferramenta de operação.
+ *
+ * Dois cinzas, não âmbar e azul: o que a equipe enviou em claro, o que chegou
+ * em escuro. Âmbar fica para o que precisa de alguém agora, e nada num gráfico
+ * de ontem precisa.
  */
 export function VolumeChart({
   buckets,
@@ -35,12 +39,12 @@ export function VolumeChart({
     <div className="space-y-3 rounded-lg border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-sm bg-primary/85" />
+          <span className="h-2 w-2 rounded-sm bg-zinc-300" />
           <span className="text-muted-foreground">Enviadas</span>
           <span className="font-medium">{totalSent}</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-sm bg-sky-400/70" />
+          <span className="h-2 w-2 rounded-sm bg-zinc-600" />
           <span className="text-muted-foreground">Recebidas</span>
           <span className="font-medium">{totalReceived}</span>
         </span>
@@ -64,23 +68,25 @@ export function VolumeChart({
                 key={bucket.key}
                 // h-full é essencial: sem altura resolvida no pai, a altura
                 // percentual da barra vira zero e o gráfico sai vazio.
-                className="flex h-full min-w-[10px] flex-1 flex-col justify-end"
+                className="group flex h-full min-w-[10px] flex-1 flex-col items-center justify-end"
                 title={`${bucket.label} · ${bucket.sent} enviadas, ${bucket.received} recebidas`}
               >
+                {/* Até 24px de largura, ponta arredondada e base reta; o vão de
+                    2px separa enviadas de recebidas sem traçar borda. */}
                 <div
-                  className="flex w-full flex-col justify-end overflow-hidden rounded-sm"
+                  className="flex w-full max-w-6 flex-col justify-end gap-[2px] overflow-hidden rounded-t-[4px] transition-[filter] duration-150 group-hover:brightness-125"
                   style={{ height: `${Math.max(heightPercent, total > 0 ? 2 : 0)}%` }}
                 >
                   {bucket.received > 0 ? (
                     <div
-                      className="w-full bg-sky-400/70"
+                      className="min-h-[2px] w-full bg-zinc-600"
                       style={{ flexGrow: bucket.received }}
                       aria-hidden
                     />
                   ) : null}
                   {bucket.sent > 0 ? (
                     <div
-                      className="w-full bg-primary/85"
+                      className="min-h-[2px] w-full bg-zinc-300"
                       style={{ flexGrow: bucket.sent }}
                       aria-hidden
                     />

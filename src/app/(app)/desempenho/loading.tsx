@@ -11,11 +11,9 @@ export default function DesempenhoLoading() {
 
           <section className="space-y-3">
             <Skeleton className="h-3 w-28" />
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {Array.from({ length: 6 }, (_, i) => (
-                <Skeleton key={i} className="h-[76px]" />
-              ))}
-            </div>
+            {/* O funil: número grande à esquerda, cinco etapas à direita. */}
+            <Skeleton className="h-[515px] rounded-lg lg:h-[237px]" />
+            <Skeleton className="h-3 w-80 max-w-full" />
           </section>
 
           <section className="space-y-3">

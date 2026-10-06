@@ -84,12 +84,13 @@ export function AppSidebar({ profile }: { profile: SessionProfile }) {
                   : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
               )}
             >
-              {/* Barra de acento: a seção ativa se acha de relance, mesmo no
-                  rail estreito onde o rótulo não aparece. */}
+              {/* Barra de marcação: a seção ativa se acha de relance, mesmo no
+                  rail estreito onde o rótulo não aparece. Neutra — estar numa
+                  tela não é urgência, e âmbar fica para o que é. */}
               {active ? (
-                <span className="absolute -left-2 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+                <span className="absolute -left-2 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground/80" />
               ) : null}
-              <Icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
+              <Icon className="h-4 w-4 shrink-0" />
               <span className="hidden lg:inline">{item.label}</span>
             </Link>
           );
@@ -121,7 +122,7 @@ export function AppSidebar({ profile }: { profile: SessionProfile }) {
 
         <div className="flex items-center gap-2 rounded-lg px-1 py-1.5">
           <Avatar className="h-7 w-7">
-            <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
+            <AvatarFallback className="bg-surface-muted text-[10px] font-semibold text-foreground/80">
               {initials(profile.full_name)}
             </AvatarFallback>
           </Avatar>

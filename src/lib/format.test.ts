@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dayKey, formatDate, formatDateTime, formatDayDivider, formatListTime, formatTime } from "./format";
+import {
+  dayKey,
+  formatAgenda,
+  formatDate,
+  formatDateTime,
+  formatDayDivider,
+  formatListTime,
+  formatRelativePast,
+  formatTime,
+} from "./format";
 
 // O runtime dos testes é UTC, como a Vercel. Tudo aqui verifica que a saída
 // sai no fuso de Brasília mesmo assim.
@@ -78,5 +87,52 @@ describe("dayKey", () => {
   it("agrupa pelo dia local, não pelo UTC", () => {
     // As duas mensagens são do dia 12 em São Paulo, apesar de UTC diferente.
     expect(dayKey("2026-08-12T23:00:00Z")).toBe(dayKey("2026-08-13T01:00:00Z"));
+  });
+});
+
+describe("formatRelativePast", () => {
+  // 12/08, 15:30 em São Paulo. O relógio vem por parâmetro, não do sistema.
+  const agora = new Date("2026-08-12T18:30:00Z");
+
+  it("diz agora no primeiro minuto", () => {
+    expect(formatRelativePast("2026-08-12T18:29:30Z", agora)).toBe("agora");
+  });
+
+  it("conta minutos e horas dentro do mesmo dia", () => {
+    expect(formatRelativePast("2026-08-12T18:27:00Z", agora)).toBe("há 3 min");
+    expect(formatRelativePast("2026-08-12T13:00:00Z", agora)).toBe("há 5 h");
+  });
+
+  it("vira ontem pelo dia local, não por 24 horas", () => {
+    // 11/08 às 23:00 local foi há 16h30, mas já é ontem.
+    expect(formatRelativePast("2026-08-12T02:00:00Z", agora)).toBe("ontem");
+  });
+
+  it("conta dias na semana e cai para a data depois", () => {
+    expect(formatRelativePast("2026-08-08T15:00:00Z", agora)).toBe("há 4 dias");
+    expect(formatRelativePast("2026-07-20T15:00:00Z", agora)).toBe("20/07");
+    expect(formatRelativePast("2025-12-20T15:00:00Z", agora)).toBe("20/12/25");
+  });
+
+  it("aceita o relógio em milissegundos e mostra travessão sem data", () => {
+    expect(formatRelativePast("2026-08-12T18:20:00Z", agora.getTime())).toBe("há 10 min");
+    expect(formatRelativePast(null, agora)).toBe("—");
+  });
+});
+
+describe("formatAgenda", () => {
+  const agora = new Date("2026-08-12T18:30:00Z"); // 12/08, 15:30 local
+
+  it("nomeia hoje, amanhã e ontem pelo dia local", () => {
+    expect(formatAgenda("2026-08-12T20:00:00Z", agora)).toBe("hoje, 17:00");
+    // 13/08 às 01:00Z ainda é 12/08 às 22:00 em São Paulo.
+    expect(formatAgenda("2026-08-13T01:00:00Z", agora)).toBe("hoje, 22:00");
+    expect(formatAgenda("2026-08-13T12:00:00Z", agora)).toBe("amanhã, 09:00");
+    expect(formatAgenda("2026-08-11T12:00:00Z", agora)).toBe("ontem, 09:00");
+  });
+
+  it("mostra a data com a hora nos demais dias", () => {
+    expect(formatAgenda("2026-08-20T17:00:00Z", agora)).toBe("20/08, 14:00");
+    expect(formatAgenda("2027-01-05T17:00:00Z", agora)).toBe("05/01/27, 14:00");
   });
 });

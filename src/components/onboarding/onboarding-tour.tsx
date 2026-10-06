@@ -96,7 +96,7 @@ export function OnboardingTour({
                 aria-label={`Ir para o passo ${i + 1}`}
                 className={cn(
                   "h-1.5 rounded-full transition-all duration-200",
-                  i === index ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground",
+                  i === index ? "w-5 bg-foreground/80" : "w-1.5 bg-border hover:bg-muted-foreground",
                 )}
               />
             ))}

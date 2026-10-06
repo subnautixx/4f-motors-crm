@@ -114,3 +114,13 @@ export interface StatusHistoryEntry {
   created_at: string;
   changed_by: UserRef | null;
 }
+
+/** Troca de responsável numa conversa — entra na linha do tempo da ficha. */
+export interface TransferEntry {
+  id: string;
+  created_at: string;
+  reason: string | null;
+  from_user: UserRef | null;
+  to_user: UserRef | null;
+  changed_by: UserRef | null;
+}

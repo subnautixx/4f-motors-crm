@@ -11,11 +11,13 @@ import { mergeMessages, oldestCursor, olderThanFilter } from "@/lib/inbox/histor
 import { MESSAGE_SELECT } from "@/lib/messages/outcome";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { ConversationListItem, ThreadMessage, UserRef } from "@/lib/types/views";
+import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 import { Composer } from "./composer";
 import { ImageViewer } from "./image-viewer";
 import { MessageBubble } from "./message-bubble";
 import { PendingBubble } from "./pending-bubble";
+import { WindowRing } from "./window-ring";
 
 /** Primeira carga: o suficiente para a conversa recente caber de uma vez. */
 const PAGE_SIZE = 50;
@@ -73,6 +75,7 @@ export function MessageThread({
   const retryLocks = useRef(new Set<string>());
 
   const conversationId = conversation.id;
+  const now = useNow();
 
   /**
    * Resposta atrasada não pode escrever na tela.
@@ -451,12 +454,19 @@ export function MessageThread({
           <span className="sr-only">Voltar</span>
         </Button>
 
-        <ContactAvatar
-          contactId={conversation.contact.id}
-          name={conversation.contact.full_name}
-          photoPath={conversation.contact.photo_path}
-          className="h-8 w-8"
-        />
+        <WindowRing
+          expiresAt={conversation.service_window_expires_at}
+          now={now}
+          size={32}
+          className="-m-1"
+        >
+          <ContactAvatar
+            contactId={conversation.contact.id}
+            name={conversation.contact.full_name}
+            photoPath={conversation.contact.photo_path}
+            className="h-8 w-8"
+          />
+        </WindowRing>
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold leading-5">

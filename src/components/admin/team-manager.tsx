@@ -99,7 +99,9 @@ export function TeamManager({ profiles, accounts, permissions }: Props) {
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    <Badge variant={profile.role === "admin" ? "warning" : "outline"}>
+                    {/* Papel não é alerta: o administrador se distingue pelo
+                        preenchimento, não pelo âmbar. */}
+                    <Badge variant={profile.role === "admin" ? "default" : "outline"}>
                       {profile.role === "admin" ? "Administrador" : "Consignador"}
                     </Badge>
                   </td>
@@ -167,7 +169,7 @@ function AccountsField({
           <label key={account.id} className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              className="h-3.5 w-3.5 accent-[hsl(var(--primary))]"
+              className="h-3.5 w-3.5 accent-[hsl(var(--foreground))]"
               checked={selected.includes(account.id)}
               onChange={(e) =>
                 onChange(

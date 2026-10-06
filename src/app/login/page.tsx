@@ -66,7 +66,7 @@ export default async function LoginPage({
           <ul className="space-y-5">
             {HIGHLIGHTS.map((item) => (
               <li key={item.title} className="flex gap-3.5">
-                <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary/70" />
+                <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium text-foreground">{item.title}</p>
                   <p className="text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>

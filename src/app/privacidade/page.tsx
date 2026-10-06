@@ -131,7 +131,7 @@ export default function PrivacidadePage() {
             Dúvidas sobre esta política ou sobre seus dados:{" "}
             <a
               href="mailto:iracipsantos7@gmail.com"
-              className="font-medium text-primary underline-offset-2 hover:underline"
+              className="font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:decoration-foreground"
             >
               iracipsantos7@gmail.com
             </a>

@@ -2,7 +2,7 @@
 
 import { MessageSquare, Search } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { ContactAvatar } from "@/components/crm/contact-avatar";
 import { EmptyState } from "@/components/ui/misc";
@@ -14,38 +14,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ALL_STATUSES, STATUS_DOT, STATUS_LABEL } from "@/lib/domain/lead";
-import { formatDate } from "@/lib/format";
+import { formatAgenda, formatDateTime, formatRelativePast } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
 import type { LeadStatus } from "@/lib/types/database";
 import type { ContactListItem, UserRef } from "@/lib/types/views";
+import { useNow } from "@/lib/use-now";
 import { cn, formatCurrencyBRL } from "@/lib/utils";
 
 interface Props {
   contacts: ContactListItem[];
   users: UserRef[];
   isAdmin: boolean;
+  /** Instante em que o servidor montou a página — o "agora" do primeiro render. */
+  renderedAt: number;
 }
 
-export function ContactsTable({ contacts, users, isAdmin }: Props) {
+export function ContactsTable({ contacts, users, isAdmin, renderedAt }: Props) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<LeadStatus | "todos">("todos");
   const [owner, setOwner] = useState("todos");
   const [pendingOnly, setPendingOnly] = useState(false);
 
-  // O "agora" só é definido depois de montar. Calculá-lo durante o render
-  // daria valores diferentes no servidor e no navegador, e o React acusaria
-  // divergência de hidratação em toda linha com prazo vencido.
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => setNow(Date.now()), []);
+  // O primeiro render usa o instante do servidor, o mesmo nos dois lados: um
+  // `Date.now()` aqui daria "há 3 min" no HTML e "há 4 min" no navegador, e o
+  // React acusaria divergência de hidratação em cada linha. Depois de montar,
+  // o relógio passa a ser o do navegador e anda sozinho.
+  const now = useNow(renderedAt) ?? renderedAt;
 
   // "Próxima ação vencida" é a pergunta que o consignador faz ao abrir o CRM
   // de manhã. Sem isso o campo só existiria dentro da ficha de cada cliente.
-  const overdueCount =
-    now === null
-      ? 0
-      : contacts.filter(
-          (c) => c.next_action_at && new Date(c.next_action_at).getTime() <= now,
-        ).length;
+  const overdueCount = contacts.filter(
+    (c) => c.next_action_at && new Date(c.next_action_at).getTime() <= now,
+  ).length;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -211,7 +211,9 @@ export function ContactsTable({ contacts, users, isAdmin }: Props) {
                     </td>
                   ) : null}
                   <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">
-                    {formatDate(c.last_interaction_at)}
+                    <span title={formatDateTime(c.last_interaction_at)}>
+                      {formatRelativePast(c.last_interaction_at, now)}
+                    </span>
                   </td>
                   <td className="px-4 py-2">
                     <NextAction at={c.next_action_at} note={c.next_action_note} now={now} />
@@ -253,11 +255,11 @@ function ContactCard({
 }: {
   contact: ContactListItem;
   isAdmin: boolean;
-  now: number | null;
+  now: number;
 }) {
   const vehicle = [c.vehicle?.brand, c.vehicle?.model].filter(Boolean).join(" ");
   const price = formatCurrencyBRL(c.vehicle?.listed_price);
-  const overdue = c.next_action_at !== null && now !== null && new Date(c.next_action_at).getTime() <= now;
+  const overdue = c.next_action_at !== null && new Date(c.next_action_at).getTime() <= now;
 
   return (
     <li>
@@ -278,7 +280,7 @@ function ContactCard({
               {c.full_name}
             </span>
             <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {formatDate(c.last_interaction_at)}
+              {formatRelativePast(c.last_interaction_at, now)}
             </span>
           </div>
 
@@ -316,7 +318,7 @@ function ContactCard({
                     : "text-muted-foreground ring-border",
                 )}
               >
-                {formatDate(c.next_action_at)}
+                {formatAgenda(c.next_action_at, now)}
               </span>
             ) : null}
           </div>
@@ -343,7 +345,7 @@ function FilterToggle({
       className={cn(
         "inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-xs ring-1 ring-inset transition-colors",
         active
-          ? "bg-primary/10 font-medium text-primary ring-primary/25"
+          ? "bg-foreground/[0.08] font-medium text-foreground ring-foreground/25"
           : "text-muted-foreground ring-border hover:text-foreground",
       )}
     >
@@ -365,15 +367,15 @@ function NextAction({
 }: {
   at: string | null;
   note: string | null;
-  now: number | null;
+  now: number;
 }) {
   if (!at) return <span className="text-muted-foreground/50">—</span>;
 
-  const overdue = now !== null && new Date(at).getTime() <= now;
+  const overdue = new Date(at).getTime() <= now;
 
   return (
     <span className={cn("text-xs", overdue ? "font-medium text-amber-300" : "text-muted-foreground")}>
-      {formatDate(at)}
+      {formatAgenda(at, now)}
       {note ? <span className="block truncate text-[11px] text-muted-foreground">{note}</span> : null}
     </span>
   );

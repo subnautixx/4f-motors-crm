@@ -224,3 +224,41 @@ export function fillVolumeBuckets(rows: MetricsVolumeRow[], period: Period): Vol
 
   return buckets;
 }
+
+export interface FunnelStep {
+  key: "approached" | "replied" | "interested" | "negotiating" | "consigned";
+  label: string;
+  value: number;
+  /**
+   * Percentual sobre a etapa anterior, inteiro; nulo na primeira etapa e
+   * quando a anterior é zero (não existe "x% de nada").
+   */
+  rate: number | null;
+}
+
+/**
+ * O funil do período, na ordem em que o cliente anda.
+ *
+ * Só "responderam" é um recorte de verdade de "abordados" — o banco conta quem
+ * respondeu depois da abordagem. As outras etapas contam quem ENTROU nelas no
+ * período, então a taxa entre vizinhas compara volumes do mesmo intervalo e
+ * pode passar de 100% (um cliente abordado na semana passada fechou hoje). Ela
+ * é mostrada como é, sem teto: arredondar para caber num funil bonito seria
+ * inventar número.
+ */
+export function funnelSteps(summary: MetricsSummaryRow): FunnelStep[] {
+  const raw: Omit<FunnelStep, "rate">[] = [
+    { key: "approached", label: "Abordados", value: Number(summary.contacts_approached) || 0 },
+    { key: "replied", label: "Responderam", value: Number(summary.contacts_replied) || 0 },
+    { key: "interested", label: "Interessados", value: Number(summary.interested_count) || 0 },
+    { key: "negotiating", label: "Em negociação", value: Number(summary.negotiating_count) || 0 },
+    { key: "consigned", label: "Consignados", value: Number(summary.consigned_count) || 0 },
+  ];
+
+  return raw.map((step, index) => {
+    const previous = raw[index - 1];
+    const rate =
+      previous && previous.value > 0 ? Math.round((step.value / previous.value) * 100) : null;
+    return { ...step, rate };
+  });
+}

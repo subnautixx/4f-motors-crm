@@ -16,7 +16,16 @@ import { describeServiceWindow } from "@/lib/domain/service-window";
 import { formatListTime } from "@/lib/format";
 import type { LeadStatus } from "@/lib/types/database";
 import type { ConversationListItem, UserRef } from "@/lib/types/views";
+import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
+import { WindowRing } from "./window-ring";
+
+/**
+ * Filtro ligado. Neutro de propósito: âmbar no sistema quer dizer "precisa de
+ * você agora", e um filtro escolhido não precisa de nada.
+ */
+const FILTER_ON = "bg-foreground/[0.08] font-medium text-foreground ring-foreground/25";
+const FILTER_OFF = "bg-transparent text-muted-foreground ring-border";
 
 interface Props {
   conversations: ConversationListItem[];
@@ -31,6 +40,8 @@ export function ConversationList({ conversations, selectedId, onSelect, users, i
   const [status, setStatus] = useState<LeadStatus | "todos">("todos");
   const [assignee, setAssignee] = useState<string>("todos");
   const [unreadOnly, setUnreadOnly] = useState(false);
+  // Um relógio para a lista inteira: as janelas de todas as linhas andam juntas.
+  const now = useNow();
 
   // Filtro no cliente: a RLS já entregou só o que este usuário pode ver, e a
   // lista cabe em memória. Resultado instantâneo, sem ida ao servidor.
@@ -99,9 +110,7 @@ export function ConversationList({ conversations, selectedId, onSelect, users, i
             <SelectTrigger
               className={cn(
                 "h-7 w-auto gap-1 rounded-full border-0 px-2.5 text-xs ring-1 ring-inset",
-                status !== "todos"
-                  ? "bg-primary/10 text-primary ring-primary/25"
-                  : "bg-transparent text-muted-foreground ring-border",
+                status !== "todos" ? FILTER_ON : FILTER_OFF,
               )}
             >
               <SelectValue />
@@ -121,9 +130,7 @@ export function ConversationList({ conversations, selectedId, onSelect, users, i
               <SelectTrigger
                 className={cn(
                   "h-7 w-auto gap-1 rounded-full border-0 px-2.5 text-xs ring-1 ring-inset",
-                  assignee !== "todos"
-                    ? "bg-primary/10 text-primary ring-primary/25"
-                    : "bg-transparent text-muted-foreground ring-border",
+                  assignee !== "todos" ? FILTER_ON : FILTER_OFF,
                 )}
               >
                 <SelectValue />
@@ -171,6 +178,7 @@ export function ConversationList({ conversations, selectedId, onSelect, users, i
                 selected={c.id === selectedId}
                 showAssignee={isAdmin}
                 onSelect={onSelect}
+                now={now}
               />
             ))}
           </ul>
@@ -196,9 +204,7 @@ function FilterChip({
       aria-pressed={active}
       className={cn(
         "inline-flex h-7 items-center rounded-full px-2.5 text-xs ring-1 ring-inset transition-colors",
-        active
-          ? "bg-primary/10 font-medium text-primary ring-primary/25"
-          : "text-muted-foreground ring-border hover:text-foreground",
+        active ? FILTER_ON : cn(FILTER_OFF, "hover:text-foreground"),
       )}
     >
       {children}
@@ -211,16 +217,20 @@ function ConversationRow({
   selected,
   showAssignee,
   onSelect,
+  now,
 }: {
   conversation: ConversationListItem;
   selected: boolean;
   showAssignee: boolean;
   onSelect: (id: string) => void;
+  now: number | null;
 }) {
   const vehicle = [c.vehicle?.brand, c.vehicle?.model].filter(Boolean).join(" ");
   const unread = c.unread_count > 0;
   // Quem está para perder a janela precisa ser visto sem abrir a conversa.
-  const janela = describeServiceWindow(c.service_window_expires_at);
+  // Só depois de montar: calculada no servidor, a janela daria um texto no
+  // HTML e outro no navegador.
+  const janela = now === null ? null : describeServiceWindow(c.service_window_expires_at, new Date(now));
 
   return (
     <li className="px-2">
@@ -235,16 +245,23 @@ function ConversationRow({
       >
         {/* Marcador de seleção: mais legível que só a mudança de fundo. */}
         {selected ? (
-          <span className="motion-fade absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+          <span className="motion-fade absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground/80" />
         ) : null}
 
-        <ContactAvatar
-          contactId={c.contact.id}
-          name={c.contact.full_name}
-          photoPath={c.contact.photo_path}
-          highlighted={unread}
-          className="mt-0.5"
-        />
+        {/* Margem negativa: o anel ocupa o respiro da linha, não empurra o texto. */}
+        <WindowRing
+          expiresAt={c.service_window_expires_at}
+          now={now}
+          size={36}
+          className="-mx-1 -mb-1 -mt-0.5"
+        >
+          <ContactAvatar
+            contactId={c.contact.id}
+            name={c.contact.full_name}
+            photoPath={c.contact.photo_path}
+            highlighted={unread}
+          />
+        </WindowRing>
 
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-baseline gap-2">
@@ -289,7 +306,7 @@ function ConversationRow({
             />
             <span className="shrink-0">{STATUS_LABEL[c.contact.status]}</span>
 
-            {janela.state === "acabando" ? (
+            {janela?.state === "acabando" ? (
               <span
                 className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-[10px] font-medium text-amber-300 ring-1 ring-inset ring-amber-500/25"
                 title="A janela de 24 horas está acabando"
@@ -298,7 +315,7 @@ function ConversationRow({
                   ? `${janela.minutesLeft}min`
                   : `${Math.floor((janela.minutesLeft ?? 0) / 60)}h`}
               </span>
-            ) : janela.state === "fechada" ? (
+            ) : janela?.state === "fechada" ? (
               <span
                 className="shrink-0 rounded-full bg-surface-muted px-1.5 text-[10px] font-medium text-muted-foreground/80 ring-1 ring-inset ring-border"
                 title="A janela de 24 horas fechou — só com modelo aprovado"

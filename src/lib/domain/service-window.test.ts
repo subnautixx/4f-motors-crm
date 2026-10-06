@@ -22,7 +22,7 @@ describe("requiresApprovedTemplate", () => {
     expect(requiresApprovedTemplate("acabando")).toBe(false);
   });
 });
-import { describeServiceWindow } from "./service-window";
+import { describeServiceWindow, windowFractionLeft } from "./service-window";
 
 const agora = new Date("2026-09-04T12:00:00Z");
 const em = (minutos: number) => new Date(agora.getTime() + minutos * 60_000).toISOString();
@@ -75,5 +75,21 @@ describe("requiresTemplateForWindow", () => {
 
   it("libera enquanto a janela está aberta", () => {
     expect(requiresTemplateForWindow(new Date(Date.now() + 3_600_000).toISOString())).toBe(false);
+  });
+});
+
+describe("windowFractionLeft", () => {
+  it("vai de cheio a vazio ao longo das 24 horas", () => {
+    expect(windowFractionLeft(describeServiceWindow(em(24 * 60), agora))).toBe(1);
+    expect(windowFractionLeft(describeServiceWindow(em(6 * 60), agora))).toBe(0.25);
+  });
+
+  it("não passa de cheio mesmo com relógio adiantado no banco", () => {
+    expect(windowFractionLeft(describeServiceWindow(em(25 * 60), agora))).toBe(1);
+  });
+
+  it("é zero com a janela fechada ou sem janela", () => {
+    expect(windowFractionLeft(describeServiceWindow(em(-5), agora))).toBe(0);
+    expect(windowFractionLeft(describeServiceWindow(null, agora))).toBe(0);
   });
 });
