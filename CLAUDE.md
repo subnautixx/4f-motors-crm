@@ -1,5 +1,10 @@
 # 4FMOTORS CRM
 
+> **Repositório congelado desde 06/10.** O CRM oficial é o
+> `subnautixx/consignacaocrm` (TanStack Start, ligado ao projeto CRM OFICIAL
+> 4FMOTORS no Lovable). Não desenvolver aqui nem portar mudanças para cá; este
+> código fica só como referência histórica.
+
 CRM interno de uma loja de consignação de veículos. WhatsApp + clientes +
 produtividade. Nada além disso.
 

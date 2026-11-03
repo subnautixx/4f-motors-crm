@@ -1,5 +1,11 @@
 # Reimportação da Inbox no Lovable
 
+> **Obsoleto.** Este fluxo de copiar do Next.js para o Lovable acabou. O
+> desenvolvimento agora acontece direto no `subnautixx/consignacaocrm`, que
+> sincroniza com o projeto CRM OFICIAL 4FMOTORS (workspace TRABALHO 2). O
+> Connect My Code citado abaixo não é mais o destino. Fica aqui só como
+> registro do que foi portado.
+
 Este repositório usa Next.js. O projeto **Connect My Code**, na workspace
 **TRABALHO** do Lovable, usa TanStack Start e recebe adaptações manuais deste
 código. Uma publicação no Lovable não atualiza automaticamente este repositório.
